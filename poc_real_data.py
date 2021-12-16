@@ -25,9 +25,12 @@ def read_visits(shards=range(3)):
     Args:
       shards:  A subset of the integers 0-9, indicating which data shards
         should be read in.
+
+    Returns:
+      A pandas DataFrame
     """
     data = pd.DataFrame()
-    dname = "/Users/stevescott/Downloads/demographics"
+    dname = "/Users/stevescott/Downloads/demographics-2"
     for which_part in shards:
         fname = f"part-00000000000{which_part}.csv.gz"
         fname = os.path.join(dname, fname)
@@ -72,7 +75,7 @@ def setup_visit_data(shards):
     returns the visit-related bits needed to run the model.
     """
     data = read_visits(shards)
-    data = remove_bots(data, bot_visit_threshold=20)
+    data = remove_bots(data, bot_visit_threshold=100)
 
     print("creating cookie map")
     cookie_set = set(data["estid"].values)
@@ -165,6 +168,7 @@ visits_per_site = pd.Series(np.array(visit_counts.sum(axis=0)).ravel(),
                             index=site_index)
 
 age_profiles, gender_profiles = read_site_profiles()
+
 known_sites = np.array([False] * num_sites)
 known_sites[:1000] = True
 cookie_prior, prior_a, prior_b = create_priors(
@@ -179,3 +183,34 @@ rates = prior_a / prior_b
 
 rates, cookie_distribution, history = model.fit_model(
     visit_counts, rates, cookie_prior, prior_a, prior_b, niter=200)
+
+# ===========================================================================
+# This bit does an analysis of the fitted model by comparing the fitted rates
+# to the masked rates
+masked_sites = site_index[1000:]
+
+
+def plot_site(domain_name, site_map, fitted_rates, age_profiles):
+    pos = site_map[domain_name]
+    site_rates = fitted_rates[pos, :]
+    site_profile = site_rates / np.sum(site_rates)
+    true_profile = age_profiles.loc[domain_name, :]
+    profiles = pd.DataFrame({
+        "true": true_profile,
+        "estimated": site_profile,
+        })
+    profiles.plot(kind="barh")
+    plt.show()
+
+
+def plot_user(data, user):
+    """
+
+    """
+    subset = data[data.estid == user]
+
+
+
+def plot_users(data, users):
+    """
+    """
